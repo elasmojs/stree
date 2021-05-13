@@ -1,0 +1,124 @@
+.stree ul, li{
+    list-style-type: none;
+    padding: 0;
+}
+
+.stree ul.stree-list{
+    display: none;
+    position: relative;
+    padding: 2px;
+    margin: 0;
+}
+
+.stree ul.stree-list-root{
+    display: block;
+}
+
+.stree ul.stree-list-expanded{
+    display: block;
+}
+
+.stree li.stree-list-item{
+    padding: 0;
+    font-family: arial, helvetica, sans-serif;
+    font-size: 10pt;
+    color: #303030;
+    margin: 3px;
+}
+
+.stree .stree-item-label {
+    padding: 4px;
+    display: block;
+    background-color: transparent;
+    margin: 0px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.stree .stree-list-item.hover .stree-item-label-text.hover {
+    font-weight: bold;
+}
+
+.stree .stree-item-label:hover{
+    background-color: #ebebeb;
+}
+
+.stree .stree-item-label.stree-item-selected{
+    background-color: #ebebeb;
+    font-weight: bold;
+}
+
+.stree .stree-item-expand {
+    display: inline-block;
+    background: transparent;
+    width: 15px;
+    height: 15px;
+    line-height: 15px;
+    vertical-align: middle;
+    text-align: center;
+    margin-right: 3px;
+    margin-top: -3px;
+    padding: 0;
+    box-sizing: content-box;
+    font-size: 15pt;
+}
+
+.stree .stree-item-expand.expanded {
+    transform: rotate(90deg);
+}
+
+.stree .stree-item-default{
+    background: transparent;  
+}
+
+.stree .stree-item-folder {
+    color: #aaaaaa;
+    cursor: pointer;
+}
+
+.stree .stree-item-label{
+    vertical-align: middle;
+}
+
+
+/* Context Menu */
+
+.stree-ctxmenu {
+    position: absolute;
+    display: none;
+    top: 25px;
+    left: 20px;
+    background: #f1f1f1;
+    border: 1px solid #aaa;
+    box-shadow: 2px 2px 2px #ddd;
+    padding: 0;
+    min-width: 150px;
+    z-index: 100000;
+}
+
+.stree-ctxmenu.show{
+    display: inline-block;
+}
+
+.stree-ctxmenu-item {
+    display: block;
+    margin: 0;
+    margin-bottom: 0px;
+    padding: 6px;
+    cursor: pointer;
+    font-family: Arial, Verdana, Helevetica, sans-serif;
+    font-size: 10pt;
+}
+
+.stree-ctxmenu-line {
+    font-size: 3px;
+    display: block;
+    border-bottom: 1px solid #ddd;
+    margin-bottom: 3px;
+}
+
+.stree-ctxmenu-item:hover {
+    background-color: #fefefe;
+}

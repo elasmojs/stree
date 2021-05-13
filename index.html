@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Tree</title>
+    <link rel="stylesheet" href="simpletree.css">
+    <style>
+        #tree{
+            display: inline-block;
+            width: 250px;
+            overflow: auto;
+            box-sizing: content-box;
+        }
+    </style>
+    <script src="simpletree.js"></script>
+    <script>
+        var stree;
+        var onCtxMenuClick = function(e){
+            alert(this.menuTriggerOptions.ctxNode.label + ' ' + e.srcElement.innerText);
+        }
+
+        var onChild2MenuClick = function(e){
+            alert('Child2 Menu: ' + this.menuTriggerOptions.ctxNode.label + ' ' + e.srcElement.innerText);
+        }
+
+        window.onload = function(){
+            stree = new STree(
+                document.getElementById('tree'), 
+                {
+                    label: "Root",
+                    children: [{
+                        label: "child1",
+                        children: [{
+                            label: "child11",
+                            children: []
+                        },
+                        {
+                            label: "child12 HA HA HA HA AHHAH AH",
+                            children: []
+                        }]
+                    },{
+                        label: "child2",
+                        contextMenu: {
+                            override: false,
+                            items: [
+                                {
+                                    label: "Specific Menu 1",
+                                    onclick: onChild2MenuClick,
+                                    items: []
+                                },
+                                {
+                                    label: "Specific Menu 2",
+                                    onclick: onChild2MenuClick,
+                                    items: []
+                                }
+                            ]
+                        },
+                        children: []
+                    }]
+                },
+                {
+                    contextMenu: {
+                        items: [
+                            {
+                                label: "Menu 1",
+                                onclick: onCtxMenuClick,
+                                items: []
+                            },
+                            {
+                                line: true,
+                            },
+                            {
+                                label: "Menu 2",
+                                onclick: onCtxMenuClick,
+                                items: []
+                            },
+                            {
+                                label: "Menu 3",
+                                onclick: onCtxMenuClick,
+                                items: []
+                            }
+                        ]
+                    }
+                }
+            );
+
+            
+            stree.addEventListener(stree.EVENT_FOLDER_EXPAND, function(e){
+                console.log('Expanded: ' + e.node.label);
+            });
+
+            stree.addEventListener(stree.EVENT_ITEM_SELECT, function(e){
+                console.log('Selected: ' + e.node.label);
+            });
+
+            stree.addEventListener(stree.EVENT_ITEM_MOVE, function(e){
+                console.log('Moved: ' + e.node.label + ' from ' + e.oldPath + ' to ' + e.newPath);
+            })
+        }
+    </script>
+</head>
+<body>
+    <div id="tree"></div>
+</body>
+</html>
