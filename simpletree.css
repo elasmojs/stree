@@ -6,7 +6,8 @@
 .stree ul.stree-list{
     display: none;
     position: relative;
-    padding: 2px;
+    padding: 4px;
+    padding-left: 5px; 
     margin: 0;
 }
 
@@ -19,6 +20,7 @@
 }
 
 .stree li.stree-list-item{
+    position: relative;
     padding: 0;
     font-family: arial, helvetica, sans-serif;
     font-size: 10pt;
@@ -78,8 +80,48 @@
     cursor: pointer;
 }
 
+.stree .stree-folder-line {
+    display: none;
+    position: absolute;
+    background: transparent;
+    width: 2px;
+    top: 20px;
+    bottom: 18px;
+    left: 25px;
+    border-left: 1px dashed #aaaaaa;
+    z-index: 10;
+}
+
+.stree-list-item.hover > .stree-folder-line, .stree-list-item.selected > .stree-folder-line {
+    display: inline-block;
+}
+
 .stree .stree-item-label{
     vertical-align: middle;
+}
+
+.stree .stree-item-label-text {
+    padding: 2px;
+    vertical-align: bottom;
+    font-size: 9pt;
+}
+
+.stree .stree-item-icon {
+    display: inline-block;
+    width: 15px;
+    height: 15px;
+    vertical-align: middle;
+    text-align: center;
+    margin-right: 3px;
+    padding: 0px;
+    box-sizing: content-box;
+}
+
+.stree .stree-item-icon svg {
+    fill: #ddd;
+    stroke: #303030;
+    width: 97%;
+    height: auto;
 }
 
 
@@ -122,3 +164,4 @@
 .stree-ctxmenu-item:hover {
     background-color: #fefefe;
 }
+

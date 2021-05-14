@@ -1,4 +1,4 @@
-let STree = function(el, nodeData, options){
+var STree = function(el, nodeData, options){
     this.container = el;
     this.list = null;
     this.nodes = nodeData;
@@ -13,6 +13,10 @@ let STree = function(el, nodeData, options){
     this.LIST_LABEL_TAG = 'div';
     this.LIST_LABEL_EXPAND_TAG = 'span';
     this.LIST_LABEL_TEXT_TAG = 'span';
+    this.LIST_ICON_TAG = 'span';
+    this.LIST_FOLDER_LINE_TAG = 'div';
+    this.LIST_ITEM_LINE_TAG = 'div';
+
     this.LIST_FOLDER_EXPANDED = '&#x203A;';
     this.LIST_FOLDER_COLLAPSED = '&#x203A;';
 
@@ -110,7 +114,13 @@ let STree = function(el, nodeData, options){
             delete node.onExpand;
             node.expandEl.classList.remove('stree-item-folder');
             node.expandEl.classList.add('stree-item-default');
-            node.expandEl.innerHTML = "";            
+            node.expandEl.innerHTML = "";
+            if(node.iconEl)  
+                node.iconEl.innerHTML = Icon.get('FILE_ICON');
+            if(node.folderLineEl){
+                node.el.removeChild(node.folderLineEl);
+                delete node.folderLineEl;
+            }        
         }
         return rVal;
     }
@@ -167,6 +177,9 @@ let STree = function(el, nodeData, options){
                 if(!targetNode.onExpand)
                     targetNode.onExpand = this.getOnNodeExpandListener(targetNode, this);
                 targetNode.expandEl.addEventListener('click', targetNode.onExpand);
+                if(targetNode.iconEl)
+                    targetNode.iconEl.innerHTML = Icon.get('FOLDER_ICON');
+                this.addFolderLine(targetNode, targetNode.el);
             }
             targetNode.listEl.appendChild(node.el);
             var newPath = this.getNodePath(node);
@@ -181,10 +194,12 @@ let STree = function(el, nodeData, options){
             var currSelected = stree.selectedNode;
             if(currSelected){
                 currSelected.selected = false;
+                currSelected.el.classList.remove('selected');
                 currSelected.labelEl.classList.remove('stree-item-selected');
             }
             
             node.selected = true;
+            node.el.classList.add('selected');
             node.labelEl.classList.add('stree-item-selected');
             stree.selectedNode = node;
             stree.onNodeSelected.call(stree, node);
@@ -241,11 +256,24 @@ let STree = function(el, nodeData, options){
         }
     }
 
+    this.addNodeIcon = function(node, labelElem){
+        var iconElem = document.createElement(this.LIST_ICON_TAG);
+        iconElem.classList.add('stree-item-icon');
+        if(node.children && node.children.length > 0)
+            iconElem.innerHTML = Icon.get('FOLDER_ICON');
+        else
+            iconElem.innerHTML = Icon.get('FILE_ICON');
+        labelElem.appendChild(iconElem);
+        node.iconEl = iconElem;
+    }
+
     this.addNodeLabel = function(node, nodeElem){
         var labelElem = document.createElement(this.LIST_LABEL_TAG);
         labelElem.classList.add('stree-item-label');
         
         this.addNodeExpand(node, nodeElem, labelElem);
+        if(this.options.useIcon)
+            this.addNodeIcon(node, labelElem);
 
         var textElem = document.createElement(this.LIST_LABEL_TEXT_TAG);
         textElem.classList.add('stree-item-label-text');
@@ -275,9 +303,20 @@ let STree = function(el, nodeData, options){
         labelElem.addEventListener('drop', node.onDrop);
 
         labelElem.addEventListener('dragover', function(e){e.preventDefault();}); //allow items to be dropped on it
-
+        if(this.contextMenu)//if context menu has been initialized then add listener
+            labelElem.addEventListener('contextmenu', this.getContextMenuListener(node, this));
+        
         node.labelEl = labelElem;
         nodeElem.appendChild(labelElem);
+    }
+
+    this.addFolderLine = function(node, nodeElem){
+        if(!this.options.folderLines || node.folderLineEl)
+            return; //Ignore if folder line option is not true
+        var flElem = document.createElement(this.LIST_FOLDER_LINE_TAG);
+        flElem.classList.add('stree-folder-line');
+        nodeElem.appendChild(flElem);
+        node.folderLineEl = flElem;
     }
 
     this.addNodeElem = function(parent, node, tag, id, classList, level){
@@ -285,9 +324,14 @@ let STree = function(el, nodeData, options){
         nodeElem.setAttribute('id', id);
         for(var classIdx=0;classIdx<classList.length;classIdx++)
             nodeElem.classList.add(classList[classIdx]);
-        //nodeElem.style.paddingLeft = (level * 4) + 'px';
-        if(node)
+        
+
+        if(node){
+            if(node.children && node.children.length > 0)
+                this.addFolderLine(node, nodeElem);
+            
             this.addNodeLabel(node, nodeElem);
+        }
         
         if(parent.el)
             parent.el.appendChild(nodeElem);
@@ -333,6 +377,9 @@ let STree = function(el, nodeData, options){
             if(!parentNode.onExpand)
                 parentNode.onExpand = this.getOnNodeExpandListener(parentNode, this);
             parentNode.expandEl.addEventListener('click', parentNode.onExpand);
+            if(parentNode.iconEl)
+                parentNode.iconEl.innerHTML = Icon.get('FOLDER_ICON');
+            this.addFolderLine(parentNode, parentNode.el);
         }
         node.isRoot = false;
         node.parent = parentNode;
@@ -380,7 +427,7 @@ let STree = function(el, nodeData, options){
 
     this.addContextMenu = function(ctxMenu){
         if(!ctxMenu)
-            return; //ignore if menu is not defined;
+            ctxMenu = {};
         if(!ctxMenu.id)
             ctxMenu.id = this.getNewId(5);
         this.contextMenu = new SContext(ctxMenu);
@@ -434,7 +481,7 @@ let STree = function(el, nodeData, options){
 
 */
 
-let SContext = function(menu, options){
+var SContext = function(menu, options){
     this.menu = menu;
     this.menuEl = null;
     this.hideMenuHandlers = [];
@@ -477,9 +524,9 @@ let SContext = function(menu, options){
     }
 
     this.showMenu = function(posX, posY, options){
-        if(this.visible)
-            return; //ignore if menu is already visible
-
+        if(this.visible || this.menu.items.length===0)
+            return; //ignore if menu is already visible or it has no items
+        
         this.menuTriggerOptions = options;
         this.menuEl.style.left = posX + 'px';
         this.menuEl.style.top = posY + 'px';
@@ -498,6 +545,8 @@ let SContext = function(menu, options){
     this.addMenuItem = function(item, mark){
         //<span class="stree-ctxmenu-item">Menu 1</span>
         var menuElem = document.createElement('span');
+        if(item.id)
+            menuElem.setAttribute('id', item.id);
         menuElem.classList.add('stree-ctxmenu-item');
         if(mark)
             menuElem.classList.add('mark');
@@ -536,6 +585,8 @@ let SContext = function(menu, options){
             for(var itemIdx=0;itemIdx<items.length;itemIdx++){
                 this.addItem(items[itemIdx]);
             }
+        }else{
+            this.menu.items = [];
         }
         document.body.appendChild(menuElem);
         window.addEventListener('click', this.windowClickListener(this));
@@ -551,13 +602,25 @@ let SContext = function(menu, options){
             var markedElems = this.menuEl.querySelectorAll('.mark');
             for(var mIdx=0;mIdx<markedElems.length;mIdx++)
                 this.menuEl.removeChild(markedElems[mIdx]);
+            var orgItems = [];
+            for(var iIdx=0;iIdx<this.menu.items.length;iIdx++){
+                var item = this.menu.items[iIdx];
+                if(!item.mark)
+                    orgItems.push(item);
+            }
+            this.menu.items = orgItems;
+
             if(items &&  items.length > 0){
-                this.addLineItem(true) // add a demarcation line if there is a custom menu
+                if(this.menu.items.length > 0){//if there are root menu items already, add a demarcation line for custom menu 
+                    this.addLineItem(true) 
+                    this.menu.items.push({line: true, mark: true});
+                }
                 mark = true;
             }else{
                 //use original menu
                 this.menuEl.innerHTML = "";
                 items = this.menu.items;
+                this.menu.items = [];
                 mark = false;
             }
         }
@@ -565,7 +628,9 @@ let SContext = function(menu, options){
         if(items && items.length > 0){
             for(var itemIdx=0;itemIdx<items.length;itemIdx++){
                 var item = items[itemIdx];
+                item.mark = mark;
                 (item.line)? this.addLineItem(mark) : this.addMenuItem(item, mark);
+                this.menu.items.push(item);
             }
         }
     }
@@ -578,4 +643,13 @@ let SContext = function(menu, options){
         this.createMenu();
     }
     this.initMenu();
+}
+
+var Icon = {
+    get: function(iconId){
+        return Icon[iconId];
+    },
+
+    FILE_ICON : '<?xml version="1.0" encoding="iso-8859-1"?><svg class="sicon-svg" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 512 512" fill="#efefef" stroke="#dddddd"><path stroke-width="12px" d="M447.168,134.56c-0.537-1.284-1.319-2.451-2.304-3.435l-128-128c-2.002-1.991-4.707-3.114-7.531-3.125H74.667C68.776,0,64,4.776,64,10.667v490.667C64,507.224,68.776,512,74.667,512h362.667c5.891,0,10.667-4.776,10.667-10.667V138.667C447.997,137.256,447.714,135.86,447.168,134.56z"/></svg>',
+    FOLDER_ICON : '<?xml version="1.0" encoding="iso-8859-1"?><svg class="sicon-svg" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 491.52 491.52" fill="#efefef" stroke="#dddddd"><path stroke-width="12px" d="M207.05,102.4l-53.53-51.2 H0v389.12h491.52 V102.4H207.05z"/><rect fill="#dddddd" x="194.56" y="368.64" width="235.52" height="20.48"/><rect fill="#dddddd" x="296.96" y="317.44" width="133.12" height="20.48"/></svg>'
 }

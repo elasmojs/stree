@@ -18,7 +18,14 @@
     <script>
         var stree;
         var onCtxMenuClick = function(e){
-            alert(this.menuTriggerOptions.ctxNode.label + ' ' + e.srcElement.innerText);
+            switch(e.srcElement.id){
+                case 'add':
+                        stree.addNode({label:('New Node')+Math.round(100*Math.random()),children:[]}, this.menuTriggerOptions.ctxNode);
+                    break;
+                case 'delete':
+                        stree.removeNode(this.menuTriggerOptions.ctxNode.parent, this.menuTriggerOptions.ctxNode);
+                    break;
+            }
         }
 
         var onChild2MenuClick = function(e){
@@ -46,11 +53,13 @@
                             override: false,
                             items: [
                                 {
+                                    id: "smenu1",
                                     label: "Specific Menu 1",
                                     onclick: onChild2MenuClick,
                                     items: []
                                 },
                                 {
+                                    id: "smenu2",
                                     label: "Specific Menu 2",
                                     onclick: onChild2MenuClick,
                                     items: []
@@ -61,10 +70,13 @@
                     }]
                 },
                 {
+                    useIcon: true,
+                    folderLines: true,
                     contextMenu: {
                         items: [
                             {
-                                label: "Menu 1",
+                                id: "add",
+                                label: "Add Node",
                                 onclick: onCtxMenuClick,
                                 items: []
                             },
@@ -72,11 +84,13 @@
                                 line: true,
                             },
                             {
-                                label: "Menu 2",
+                                id: "delete",
+                                label: "Delete Node",
                                 onclick: onCtxMenuClick,
                                 items: []
                             },
                             {
+                                id: "menu3",
                                 label: "Menu 3",
                                 onclick: onCtxMenuClick,
                                 items: []
