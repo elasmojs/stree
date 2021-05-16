@@ -7,11 +7,18 @@
     <title>Simple Tree</title>
     <link rel="stylesheet" href="simpletree.css">
     <style>
-        #tree{
+        h2{
+            font-family: Arial, Helvetica, sans-serif;
+            font-weight: 100;
+        }
+        .treeholder{
             display: inline-block;
             width: 250px;
+            height: 300px;
+            min-height: 400px;
             overflow: auto;
             box-sizing: content-box;
+            border: 1px solid #ddd;
         }
     </style>
     <script src="simpletree.js"></script>
@@ -25,6 +32,9 @@
                 case 'delete':
                         stree.removeNode(this.menuTriggerOptions.ctxNode.parent, this.menuTriggerOptions.ctxNode);
                     break;
+                case 'edit':
+                        stree.editNode(this.menuTriggerOptions.ctxNode);
+                    break;
             }
         }
 
@@ -37,6 +47,7 @@
                 document.getElementById('tree'), 
                 {
                     label: "Root",
+                    allowDrop: true,
                     children: [{
                         label: "child1",
                         children: [{
@@ -49,6 +60,7 @@
                         }]
                     },{
                         label: "child2",
+                        allowDrop: true,
                         contextMenu: {
                             override: false,
                             items: [
@@ -90,8 +102,8 @@
                                 items: []
                             },
                             {
-                                id: "menu3",
-                                label: "Menu 3",
+                                id: "edit",
+                                label: "Rename",
                                 onclick: onCtxMenuClick,
                                 items: []
                             }
@@ -111,11 +123,24 @@
 
             stree.addEventListener(stree.EVENT_ITEM_MOVE, function(e){
                 console.log('Moved: ' + e.node.label + ' from ' + e.oldPath + ' to ' + e.newPath);
-            })
+            });
+
+            stree.addEventListener(stree.EVENT_ITEM_ADD, function(e){
+                console.log('Added: ' + e.node.label + ' to ' + e.node.parent.label);
+            });
+
+            stree.addEventListener(stree.EVENT_ITEM_REMOVE, function(e){
+                console.log('Removed: ' + e.node.label + ' from ' + e.oldParent.label);
+            });
+
+            stree.addEventListener(stree.EVENT_ITEM_CHANGE, function(e){
+                console.log('Changed: ' + e.node.label + ' from ' + e.oldValue + ' to ' + e.newValue);
+            });
         }
     </script>
 </head>
 <body>
-    <div id="tree"></div>
+    <h2>Basic Example</h2>
+    <div id="tree" class="treeholder"></div>
 </body>
 </html>

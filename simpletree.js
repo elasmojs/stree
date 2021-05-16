@@ -16,13 +16,25 @@ var STree = function(el, nodeData, options){
     this.LIST_ICON_TAG = 'span';
     this.LIST_FOLDER_LINE_TAG = 'div';
     this.LIST_ITEM_LINE_TAG = 'div';
+    this.LIST_ITEM_EDIT_TAG = 'input';
+    this.LIST_ITEM_HIGHLIGHT_TAG = 'div';
 
     this.LIST_FOLDER_EXPANDED = '&#x203A;';
     this.LIST_FOLDER_COLLAPSED = '&#x203A;';
 
     this.EVENT_ITEM_SELECT = 'stree-item-select';
     this.EVENT_ITEM_MOVE = 'stree-item-move';
+    this.EVENT_ITEM_ADD = 'stree-item-add';
+    this.EVENT_ITEM_REMOVE = 'stree-item-remove';
+    this.EVENT_ITEM_CHANGE = 'stree-item-change';
     this.EVENT_FOLDER_EXPAND = 'stree-folder-expand';
+
+    function offset(el) {
+        var rect = el.getBoundingClientRect(),
+        scrollLeft = window.pageXOffset || document.documentElement.scrollLeft,
+        scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        return { top: rect.top + scrollTop, left: rect.left + scrollLeft }
+    }
 
     this.addEventListener = function(eventKey, listener){
         if(!this.eventListeners[eventKey])
@@ -52,6 +64,21 @@ var STree = function(el, nodeData, options){
     this.onNodeMoved = function(node, oldPath, newPath){
         var eventObj = {node: node, oldPath:oldPath, newPath:newPath};
         this.sendEvent(this.EVENT_ITEM_MOVE, eventObj);
+    }
+
+    this.onNodeAdd = function(node){
+        var eventObj = {node: node};
+        this.sendEvent(this.EVENT_ITEM_ADD, eventObj);
+    }
+
+    this.onNodeRemove = function(node, oldParent){
+        var eventObj = {node: node, oldParent: oldParent};
+        this.sendEvent(this.EVENT_ITEM_REMOVE, eventObj);
+    }
+
+    this.onNodeChange = function(node, oldValue, newValue){
+        var eventObj = {node: stree.editedNode, oldValue:oldValue, newValue:newValue};
+        stree.sendEvent(this.EVENT_ITEM_CHANGE, eventObj);
     }
 
     this.getNewId = function(length) {
@@ -122,6 +149,7 @@ var STree = function(el, nodeData, options){
                 delete node.folderLineEl;
             }        
         }
+        this.onNodeRemove(childNode, node);
         return rVal;
     }
 
@@ -189,8 +217,19 @@ var STree = function(el, nodeData, options){
 
     this.getOnSelectListener = function(node, stree){
         return function(e){
+            if(stree.isEditMode)
+                return; //dont select if in edit mode;
+            
             if(e.srcElement.classList.contains('stree-item-expand'))
                 return;
+            
+            if(node.children && node.children.length > 0 && node.onExpand)
+                node.onExpand.call(this, e);
+            
+            if(stree.selectedNode && stree.selectedNode.id === node.id)
+                return; //dont select if it is already selected
+
+            
             var currSelected = stree.selectedNode;
             if(currSelected){
                 currSelected.selected = false;
@@ -201,24 +240,50 @@ var STree = function(el, nodeData, options){
             node.selected = true;
             node.el.classList.add('selected');
             node.labelEl.classList.add('stree-item-selected');
+
+            if(stree.selectHighlightEl.parentElement)
+                stree.selectHighlightEl.parentElement.removeChild(stree.selectHighlightEl);
+            var scrollLeft = (stree.container.scrollLeft>0)? (stree.container.scrollLeft - 12) : 0;
+            stree.selectHighlightEl.style.left = (((node.level+1)*(-8)) + scrollLeft) +'px'
+            stree.selectHighlightEl.classList.add('selected');
+            node.el.appendChild(stree.selectHighlightEl);
+
             stree.selectedNode = node;
             stree.onNodeSelected.call(stree, node);
-            if(node.children && node.children.length > 0 && node.onExpand)
-                node.onExpand.call(this, e);
         }
     }
 
     this.getOnMouseOverListener = function(node, stree){
         return function(e){
-            node.el.classList.add('hover');
-            node.labelTextEl.classList.add('hover');
+            if(e.srcElement.classList.contains('stree-item-label') || 
+            e.srcElement.classList.contains('stree-item-expand') || 
+            e.srcElement.classList.contains('stree-item-label-text') ||
+            e.srcElement.classList.contains('stree-item-edit')){
+                node.el.classList.add('hover');
+                node.labelTextEl.classList.add('hover');
+                
+                if(stree.highlightEl.parentElement)
+                    stree.highlightEl.parentElement.removeChild(stree.highlightEl);
+
+                var scrollLeft = (stree.container.scrollLeft>0)? (stree.container.scrollLeft - 12) : 0;
+                stree.highlightEl.style.left = (((node.level+1)*(-8)) + scrollLeft) +'px'
+                node.el.appendChild(stree.highlightEl)
+                stree.highlightEl.classList.add('show');
+            }
         }
     }
 
     this.getOnMouseOutListener = function(node, stree){
         return function(e){
-            node.el.classList.remove('hover');
-            node.labelTextEl.classList.remove('hover');
+            if(e.srcElement.classList.contains('stree-item-label') || 
+            e.srcElement.classList.contains('stree-item-expand') || 
+            e.srcElement.classList.contains('stree-item-label-text') ||
+            e.srcElement.classList.contains('stree-item-edit')){
+                node.el.classList.remove('hover');
+                node.labelTextEl.classList.remove('hover');
+                
+                stree.highlightEl.classList.remove('show');
+            }
         }
     }
 
@@ -226,6 +291,15 @@ var STree = function(el, nodeData, options){
         return function(e){
             console.log('Dragged: ' + node.label);
             stree.draggedNode = node;
+        }
+    }
+
+    this.getOnDragOverListener = function(node, stree){
+        return function(e){
+            if(node.allowDrop && node.id != stree.draggedNode.id){
+                e.preventDefault();
+                return;
+            }
         }
     }
 
@@ -253,6 +327,68 @@ var STree = function(el, nodeData, options){
 
             stree.contextMenu.showMenu(e.clientX, e.clientY, {ctxNode: stree.ctxNode});
             e.preventDefault();
+        }
+    }
+
+    this.resetEditMode = function(){
+        this.nodeEditorEl.removeEventListener('change', stree.editedNode.changeListener);
+        delete this.editedNode.changeListener;
+        this.editedNode.labelTextEl.removeChild(this.nodeEditorEl);
+
+        if(this.editHighlightEl.parentElement)
+            this.editHighlightEl.parentElement.removeChild(this.editHighlightEl);
+        this.editHighlightEl.classList.remove('edit');
+        this.isEditMode = false;
+    }
+
+
+    this.getOnEditListener = function(stree){
+        return function(e){
+            stree.resetEditMode();
+
+            var oldValue = stree.editedNode.label;
+            var newValue = e.currentTarget.value;
+            stree.editedNode.label = newValue;
+            stree.editedNode.labelEl.setAttribute('title', newValue);
+            stree.editedNode.labelTextEl.innerHTML = newValue;
+            stree.editedNode.labelEl.classList.remove('edit');
+            
+            stree.onNodeChange.call(stree, stree.editedNode, oldValue, newValue);
+            stree.editedNode = null;       
+        }
+    }
+
+    this.editNode = function(node){
+        this.isEditMode = true;
+        this.editedNode = node;
+        this.editedNode.changeListener = this.getOnEditListener(this);
+        this.nodeEditorEl.value = node.label;
+        this.nodeEditorEl.addEventListener('change', this.editedNode.changeListener)
+
+        node.labelEl.classList.add('edit');
+        node.labelTextEl.innerHTML = "";
+        node.labelTextEl.appendChild(this.nodeEditorEl);
+        this.nodeEditorEl.focus();
+
+        if(this.editHighlightEl.parentElement)
+            this.editHighlightEl.parentElement.removeChild(this.editHighlightEl);
+        var scrollLeft = (this.container.scrollLeft>0)? (this.container.scrollLeft - 12) : 0;
+        this.editHighlightEl.style.left = (((node.level+1)*(-8)) + scrollLeft) +'px'
+        this.editHighlightEl.classList.add('edit');
+        node.el.appendChild(this.editHighlightEl);
+    }
+
+    this.getNodeEditHandler = function(stree){
+        return function(){
+            stree.isEditMode = true;
+            stree.editedNode = this;
+            stree.editedNode.changeListener = stree.getOnEditListener(stree);
+            stree.nodeEditorEl.value = this.label;
+            stree.nodeEditorEl.addEventListener('change', stree.editedNode.changeListener)
+
+            this.labelEl.classList.add('edit');
+            this.labelTextEl.innerHTML = "";
+            this.labelTextEl.appendChild(stree.nodeEditorEl);
         }
     }
 
@@ -302,7 +438,8 @@ var STree = function(el, nodeData, options){
         node.onDrop = this.getOnDropListener(node, this);
         labelElem.addEventListener('drop', node.onDrop);
 
-        labelElem.addEventListener('dragover', function(e){e.preventDefault();}); //allow items to be dropped on it
+        node.onDragOver = this.getOnDragOverListener(node, this);
+        labelElem.addEventListener('dragover', node.onDragOver); //allow items to be dropped on it
         if(this.contextMenu)//if context menu has been initialized then add listener
             labelElem.addEventListener('contextmenu', this.getContextMenuListener(node, this));
         
@@ -337,6 +474,7 @@ var STree = function(el, nodeData, options){
             parent.el.appendChild(nodeElem);
         else
             parent.appendChild(nodeElem);
+        
         return nodeElem;
     }
 
@@ -365,6 +503,7 @@ var STree = function(el, nodeData, options){
             parentNode.children = [];
         parentNode.children.push(node);
         this.createNode(node, parentNode);
+        this.onNodeAdd(node);
     }
 
     this.createChildNode = function(node, parentNode){
@@ -386,6 +525,27 @@ var STree = function(el, nodeData, options){
         node.id = this.getNewId(5);
         node.level = parentNode.level + 1;
         node.el = this.addNodeElem(parentNode.listEl, node, this.LIST_ITEM_TAG, node.id, ['stree-list-item'], node.level);
+        //node.edit = this.getNodeEditHandler(this);
+    }
+
+    this.createHighLighters = function(){
+        var hlElem = document.createElement(this.LIST_ITEM_HIGHLIGHT_TAG);
+        hlElem.classList.add('stree-item-highlight');
+        hlElem.style.width = this.container.offsetWidth-2 + 'px';
+        this.container.appendChild(hlElem);
+        this.highlightEl = hlElem;
+
+        var sHlElem = document.createElement(this.LIST_ITEM_HIGHLIGHT_TAG);
+        sHlElem.classList.add('stree-item-highlight');
+        sHlElem.style.width = this.container.offsetWidth-2 + 'px';
+        this.container.appendChild(sHlElem);
+        this.selectHighlightEl = sHlElem;
+
+        var editHlElem = document.createElement(this.LIST_ITEM_HIGHLIGHT_TAG);
+        editHlElem.classList.add('stree-item-highlight');
+        editHlElem.style.width = this.container.offsetWidth-2 + 'px';
+        this.container.appendChild(editHlElem);
+        this.editHighlightEl = editHlElem;
     }
     
     this.createNode = function(node, parentNode){
@@ -440,6 +600,51 @@ var STree = function(el, nodeData, options){
         }
     }
 
+    this.getOnEditEscListener = function(stree){
+        return function(e){
+            switch(e.key){
+                case 'Escape':
+                    if(stree.isEditMode){
+                        stree.resetEditMode();
+                        stree.editedNode.labelTextEl.innerHTML = stree.editedNode.label;
+                        stree.editedNode = null;
+                    }
+                    break;
+            }  
+        };
+    }
+
+    this.addNodeEditor = function(){
+        var nodeEditorElem = document.createElement(this.LIST_ITEM_EDIT_TAG);
+        nodeEditorElem.setAttribute('type', 'text');
+        nodeEditorElem.classList.add('stree-item-edit');
+        nodeEditorElem.addEventListener('keydown', this.getOnEditEscListener(this));
+        this.nodeEditorEl = nodeEditorElem;
+    }
+
+    this.getOnScrollListener = function(stree){
+        return function(e){
+            var scrollLeft = stree.container.scrollLeft - ((stree.container.scrollHeight > stree.container.clientHeight)? 12:0);
+            if(stree.isEditMode){
+                var leftPos = (((stree.editedNode.level+1)*(-8)) + scrollLeft) +'px';
+                stree.editHighlightEl.style.left = leftPos;
+            }
+            
+            if(stree.selectedNode){
+                var leftPos = (((stree.selectedNode.level+1)*(-8)) + scrollLeft) +'px';
+                stree.selectHighlightEl.style.left = leftPos;
+            }
+
+            if(stree.highlightEl.classList.contains('show'))
+                stree.highlightEl.classList.remove('show');    
+        };
+    }
+
+    this.addScrollHandler = function(){
+        this.scrollHandler = this.getOnScrollListener(this);
+        this.container.addEventListener('scroll', this.scrollHandler);
+    }
+
     this.processOptions = function(){
         if(!this.options)
             return; //ignore if no options provided
@@ -448,7 +653,10 @@ var STree = function(el, nodeData, options){
     }
 
     this.createTree = function(){
+        this.createHighLighters();
         this.createNode(this.nodes);
+        this.addNodeEditor();
+        this.addScrollHandler();
         this.processOptions();
     }
     this.createTree(); //Init the tree
