@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Basic - STree Demo</title>
+    <style>
+        h2{
+            font-family: Arial, Helvetica, sans-serif;
+            font-weight: 100;
+        }
+        .treeholder{
+            display: inline-block;
+            width: 250px;
+            overflow: auto;
+            box-sizing: content-box;
+        }
+    </style>
+    <link rel="stylesheet" href="../simpletree.css">
+    <script src="../simpletree.js"></script>
+    <script>
+        window.onload = function(){
+            var basicTree = new STree(document.getElementById('tree'), 
+                {
+                    label: "Root",
+                    children: [{
+                        label: "child1",
+                        children: [{
+                            label: "child11",
+                            children: []
+                        }]
+                    },{
+                        label: "child2",
+                        children: []
+                    }]
+                }
+            );
+        }
+    </script>
+</head>
+<body>
+    <h2>Basic Example</h2>
+    <div id="tree" class="treeholder"></div>
+</body>
+</html>

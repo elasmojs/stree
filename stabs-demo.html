@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STabs Demo</title>
+    <link rel="stylesheet" href="simpletree.css">
+    <style>
+        #mytab{
+            width: 600px;
+            height: 400px;
+        }
+    </style>
+    <script src="simpletree.js"></script>
+    <script>
+        var myTab;
+        window.onload = function(){
+            myTab = new STabs(document.getElementById('mytab'), {
+                id: "mytab",
+                items: [
+                    {
+                        id: "tab1",
+                        title: "Tab 1",
+                        content: "<h1>Hello There!</h1>",
+                        default: true
+                    },
+                    {
+                        id: "tab2",
+                        title: "I am a very big name for a tab which is crazy",
+                        content: "<h1>Namaskar!</h1>"
+                    },
+                    {
+                        id: "tab3",
+                        title: "Tab 3",
+                        content: "<h1>Hola!</h1>"
+                    },
+                    {
+                        id: "tab2",
+                        title: "I am a very big name for a tab which is crazy",
+                        content: "<h1>Namaskar!</h1>"
+                    },
+                    {
+                        id: "tab3",
+                        title: "Tab 3",
+                        content: "<h1>Hola!</h1>"
+                    },
+                    {
+                        id: "tab2",
+                        title: "I am a very big name for a tab which is crazy",
+                        content: "<h1>Namaskar!</h1>"
+                    },
+                    {
+                        id: "tab3",
+                        title: "Tab 3",
+                        content: "<h1>Hola!</h1>"
+                    },
+                    {
+                        id: "tab2",
+                        title: "I am a very big name for a tab which is crazy",
+                        content: "<h1>Namaskar!</h1>"
+                    },
+                    {
+                        id: "tab3",
+                        title: "Tab 3",
+                        content: "<h1>Hola!</h1>"
+                    },
+                    {
+                        id: "tab2",
+                        title: "I am a very big name for a tab which is crazy",
+                        content: "<h1>Namaskar!</h1>"
+                    },
+                    {
+                        id: "tab3",
+                        title: "Tab 3",
+                        content: "<h1>Hola!</h1>"
+                    }
+                ]
+            });
+
+            myTab.addEventListener(myTab.EVENT_TAB_BLUR, function(e){
+                console.log('Blur: ' + e.tab.title);
+            });
+
+            myTab.addEventListener(myTab.EVENT_TAB_ACTIVE, function(e){
+                console.log('Active: ' + e.tab.title);
+            });
+        }
+    </script>
+</head>
+<body>
+    <div id="mytab"></div>
+</body>
+</html>

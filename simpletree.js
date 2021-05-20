@@ -35,7 +35,7 @@ var STree = function(el, nodeData, options){
         scrollTop = window.pageYOffset || document.documentElement.scrollTop;
         return { top: rect.top + scrollTop, left: rect.left + scrollLeft }
     }
-
+    
     this.addEventListener = function(eventKey, listener){
         if(!this.eventListeners[eventKey])
             this.eventListeners[eventKey] = [];
@@ -86,18 +86,32 @@ var STree = function(el, nodeData, options){
         return idPrefix + 'stree-' + Math.round((Math.pow(36, length + 1) - Math.random() * Math.pow(36, length))).toString(36).slice(1);
     }
 
+    this.expandNode = function(node){
+        node.expanded = true;
+        node.listEl.classList.add('stree-list-expanded');
+        node.expandEl.innerHTML = this.LIST_FOLDER_EXPANDED;
+        node.expandEl.classList.add('expanded');
+    }
+
+    this.collapseNode = function(node){
+        node.expanded = false;
+        node.listEl.classList.remove('stree-list-expanded');
+        node.expandEl.innerHTML = this.LIST_FOLDER_COLLAPSED;
+        node.expandEl.classList.remove('expanded');
+    }
+
     this.getOnNodeExpandListener = function(node, stree){
         return function(e){
             if(node.expanded){
-                node.expanded = false;
-                node.listEl.classList.remove('stree-list-expanded');
-                node.expandEl.innerHTML = stree.LIST_FOLDER_COLLAPSED;
-                node.expandEl.classList.remove('expanded');
+                stree.collapseNode(node);
             }else{
-                node.expanded = true;
-                node.listEl.classList.add('stree-list-expanded');
-                node.expandEl.innerHTML = stree.LIST_FOLDER_EXPANDED;
-                node.expandEl.classList.add('expanded');
+                if(stree.options.lazyLoad && !node.listEl){
+                    for(var childIdx=0;childIdx<node.children.length;childIdx++){
+                        var childNode = node.children[childIdx];
+                        stree.createNode(childNode, node);
+                    }
+                }
+                stree.expandNode(node);
             }
             
             stree.onNodeExpanded.call(stree, node);
@@ -217,8 +231,11 @@ var STree = function(el, nodeData, options){
 
     this.getOnSelectListener = function(node, stree){
         return function(e){
-            if(stree.isEditMode)
-                return; //dont select if in edit mode;
+            if(stree.isEditMode){
+                stree.resetEditMode();
+                stree.editedNode.labelTextEl.innerHTML = stree.editedNode.label;
+                stree.editedNode = null;
+            }
             
             if(e.srcElement.classList.contains('stree-item-expand'))
                 return;
@@ -297,6 +314,8 @@ var STree = function(el, nodeData, options){
     this.getOnDragOverListener = function(node, stree){
         return function(e){
             if(node.allowDrop && node.id != stree.draggedNode.id){
+                if(node.children && node.children.length > 0 && !node.expanded)
+                    stree.expandNode(node);
                 e.preventDefault();
                 return;
             }
@@ -429,17 +448,20 @@ var STree = function(el, nodeData, options){
         node.onMouseOut = this.getOnMouseOutListener(node, this);
         labelElem.addEventListener('mouseout', node.onMouseOut);
 
-        if(!node.isRoot){ // prevent drag of root
-            labelElem.setAttribute('draggable', true);
-            node.onDrag = this.getOnDragListener(node, this);
-            labelElem.addEventListener('dragstart', node.onDrag);
+        if(this.options.allowDrag){
+            if(!node.isRoot){ // prevent drag of root
+                labelElem.setAttribute('draggable', true);
+                node.onDrag = this.getOnDragListener(node, this);
+                labelElem.addEventListener('dragstart', node.onDrag);
+            }
+
+            node.onDrop = this.getOnDropListener(node, this);
+            labelElem.addEventListener('drop', node.onDrop);
+
+            node.onDragOver = this.getOnDragOverListener(node, this);
+            labelElem.addEventListener('dragover', node.onDragOver); //allow items to be dropped on it
         }
 
-        node.onDrop = this.getOnDropListener(node, this);
-        labelElem.addEventListener('drop', node.onDrop);
-
-        node.onDragOver = this.getOnDragOverListener(node, this);
-        labelElem.addEventListener('dragover', node.onDragOver); //allow items to be dropped on it
         if(this.contextMenu)//if context menu has been initialized then add listener
             labelElem.addEventListener('contextmenu', this.getContextMenuListener(node, this));
         
@@ -495,7 +517,7 @@ var STree = function(el, nodeData, options){
         node.level = 0;
         node.el = this.addNodeElem(this.list, node, this.LIST_ITEM_TAG, node.id, ['stree-list-item'], node.level);
 
-        node.listEl = this.getNodeList(node);
+       // node.listEl = this.getNodeList(node);
     }
 
     this.addNode = function(node, parentNode){
@@ -557,9 +579,11 @@ var STree = function(el, nodeData, options){
         }
         if(node.children && node.children.length > 0){
             node.isFolder = true;
-            for(var childIdx=0;childIdx<node.children.length;childIdx++){
-                var childNode = node.children[childIdx];
-                this.createNode(childNode, node);
+            if(!this.options.lazyLoad){
+                for(var childIdx=0;childIdx<node.children.length;childIdx++){
+                    var childNode = node.children[childIdx];
+                    this.createNode(childNode, node);
+                }
             }
         }
     }
@@ -646,18 +670,20 @@ var STree = function(el, nodeData, options){
     }
 
     this.processOptions = function(){
-        if(!this.options)
+        if(!this.options){
+            this.options = {};
             return; //ignore if no options provided
+        }
 
         this.addContextMenu(this.options.contextMenu);
     }
 
     this.createTree = function(){
+        this.processOptions();
         this.createHighLighters();
         this.createNode(this.nodes);
         this.addNodeEditor();
         this.addScrollHandler();
-        this.processOptions();
     }
     this.createTree(); //Init the tree
 }
@@ -852,6 +878,151 @@ var SContext = function(menu, options){
     }
     this.initMenu();
 }
+
+/*
+{
+    id: "myTabs",
+    items: [
+        {
+            id: "tab1",
+            title: "Tab 1",
+            content: "<h1>Hello There!</h1>",
+            default: true
+        },
+        {
+            id: "tab2",
+            title: "Tab 2",
+            content: "<h1>Namaskar!</h1>"
+        },
+        {
+            id: "tab3",
+            title: "Tab 3",
+            content: "<h1>Hola!</h1>"
+        }
+    ]
+}
+
+*/
+
+var STabs = function(el, tabData, options){
+    this.container = el;
+    this.tabs = tabData;
+    this.options = options;
+    this.eventListeners = {};
+
+    this.TAB_HEADER_TAG = 'div';
+    this.TAB_TITLE_BAR_TAG = 'div';
+    this.TAB_PANE_TAG = 'div';
+    this.TAB_TITLE_TAG = 'span';
+    this.TAB_CONTENT_TAG = 'div';
+
+    this.EVENT_TAB_ACTIVE = 'stabs-tab-active';
+    this.EVENT_TAB_BLUR = 'stabs-tab-blur';
+    this.EVENT_TAB_REMOVE = 'stabs-tab-remove';
+    this.EVENT_TAB_ADD = 'stabs-tab-add';
+    
+    this.addEventListener = function(eventKey, listener){
+        if(!this.eventListeners[eventKey])
+            this.eventListeners[eventKey] = [];
+        this.eventListeners[eventKey].push(listener);
+    }
+
+    this.sendEvent = function(eventKey, eventObj){
+        var listeners = this.eventListeners[eventKey];
+        if(listeners && listeners.length > 0){
+            for(var lIdx=0;lIdx<listeners.length;lIdx++){
+                listeners[lIdx].call(this, eventObj);
+            }
+        }
+    }
+
+    this.onTabBlur = function(tab){
+        var eventObj = {tab: tab};
+        this.sendEvent(this.EVENT_TAB_BLUR, eventObj);
+    }
+
+    this.onTabActive = function(tab){
+        var eventObj = {tab: tab};
+        this.sendEvent(this.EVENT_TAB_ACTIVE, eventObj);
+    }
+
+    this.getOnTabSelectListener = function(tab, stabs){
+        return function(e){
+            if(stabs.activeTab){
+                stabs.activeTab.titleEl.classList.remove('active');
+                stabs.activeTab.contentEl.classList.remove('active');
+                stabs.onTabBlur.call(stabs, stabs.activeTab);
+            }
+            tab.titleEl.classList.add('active');
+            tab.contentEl.classList.add('active');
+            stabs.activeTab = tab;
+            stabs.onTabActive.call(stabs, tab);
+        }
+    }
+
+    this.createTabTitle = function(tab){
+        var titleElem = document.createElement(this.TAB_TITLE_TAG);
+        titleElem.classList.add('stabs-title');
+        if(tab.default)
+            titleElem.classList.add('active');
+        if(tab.title){
+            titleElem.setAttribute('title', tab.title);
+            titleElem.innerHTML = tab.title;
+        }
+        titleElem.addEventListener('click', this.getOnTabSelectListener(tab, this));
+        tab.titleEl = titleElem;
+        this.headerEl.appendChild(titleElem);
+    }
+
+    this.createTabContent = function(tab){
+        var contentElem = document.createElement(this.TAB_CONTENT_TAG);
+        contentElem.classList.add('stabs-content');
+        if(tab.default)
+            contentElem.classList.add('active');
+        if(tab.content)
+            contentElem.innerHTML = tab.content;
+        tab.contentEl = contentElem;
+        this.tabPaneEl.appendChild(contentElem);
+    }
+
+    this.createTabItem = function(tab){
+        this.createTabTitle(tab);
+        this.createTabContent(tab);
+        if(tab.default)
+            this.activeTab = tab;
+    }
+
+    this.createTabPane = function(){
+        var tabPaneElem = document.createElement(this.TAB_PANE_TAG);
+        tabPaneElem.classList.add('stabs-pane');
+        this.tabPaneEl = tabPaneElem;
+        this.container.appendChild(tabPaneElem);
+    }
+
+    this.createTabHeader = function(){
+        var tabHeaderElem = document.createElement(this.TAB_HEADER_TAG);
+        tabHeaderElem.classList.add('stabs-header');
+
+        var titleBarElem = document.createElement(this.TAB_TITLE_BAR_TAG);
+        titleBarElem.classList.add('stabs-title-bar');
+        tabHeaderElem.appendChild(titleBarElem);
+        this.headerEl = titleBarElem;
+
+        this.container.appendChild(tabHeaderElem);
+    }
+
+    this.createTabs = function(){
+        this.container.classList.add('stabs');
+        this.createTabHeader();
+        this.createTabPane();
+        for(var tIdx=0;tIdx<this.tabs.items.length;tIdx++){
+            this.createTabItem(this.tabs.items[tIdx]);
+        }
+    }
+
+    this.createTabs();
+}
+
 
 var Icon = {
     get: function(iconId){
