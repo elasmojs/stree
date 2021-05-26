@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Menu</title>
+    <link rel="stylesheet" href="simpletree.css">
+
+    <script src="simpletree.js"></script>
+    <script>
+        var smenu;
+
+        function onMenu1Func(e){
+            debugger;
+        }
+
+        window.onload = function(){
+            smenu = new SMenu(document.getElementById('menubox'),{
+                id: "myMenu",
+                items: [
+                    {
+                        id: 'menu1',
+                        label: "Menu 1",
+                        onclick: onMenu1Func,
+                        items: []
+                    },
+                    {
+                        line: true,
+                    },
+                    {
+                        id: 'menu2',
+                        label: "Menu 2",
+                        onclick: onMenu1Func,
+                        items: []
+                    },
+                    {
+                        id: 'menu3',
+                        label: "Menu 3",
+                        onclick: onMenu1Func,
+                        items: []
+                    }
+                ]
+            })
+        }
+    </script>
+</head>
+<body>
+    <div id="menubox"></div>
+</body>
+</html>

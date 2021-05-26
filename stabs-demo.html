@@ -7,9 +7,15 @@
     <title>STabs Demo</title>
     <link rel="stylesheet" href="simpletree.css">
     <style>
-        #mytab{
+        .container{
             width: 600px;
             height: 400px;
+            display: flex;
+            flex-flow: column;
+        }
+
+        #mytab{
+            flex: 1 1 auto;
         }
     </style>
     <script src="simpletree.js"></script>
@@ -18,64 +24,7 @@
         window.onload = function(){
             myTab = new STabs(document.getElementById('mytab'), {
                 id: "mytab",
-                items: [
-                    {
-                        id: "tab1",
-                        title: "Tab 1",
-                        content: "<h1>Hello There!</h1>",
-                        default: true
-                    },
-                    {
-                        id: "tab2",
-                        title: "I am a very big name for a tab which is crazy",
-                        content: "<h1>Namaskar!</h1>"
-                    },
-                    {
-                        id: "tab3",
-                        title: "Tab 3",
-                        content: "<h1>Hola!</h1>"
-                    },
-                    {
-                        id: "tab2",
-                        title: "I am a very big name for a tab which is crazy",
-                        content: "<h1>Namaskar!</h1>"
-                    },
-                    {
-                        id: "tab3",
-                        title: "Tab 3",
-                        content: "<h1>Hola!</h1>"
-                    },
-                    {
-                        id: "tab2",
-                        title: "I am a very big name for a tab which is crazy",
-                        content: "<h1>Namaskar!</h1>"
-                    },
-                    {
-                        id: "tab3",
-                        title: "Tab 3",
-                        content: "<h1>Hola!</h1>"
-                    },
-                    {
-                        id: "tab2",
-                        title: "I am a very big name for a tab which is crazy",
-                        content: "<h1>Namaskar!</h1>"
-                    },
-                    {
-                        id: "tab3",
-                        title: "Tab 3",
-                        content: "<h1>Hola!</h1>"
-                    },
-                    {
-                        id: "tab2",
-                        title: "I am a very big name for a tab which is crazy",
-                        content: "<h1>Namaskar!</h1>"
-                    },
-                    {
-                        id: "tab3",
-                        title: "Tab 3",
-                        content: "<h1>Hola!</h1>"
-                    }
-                ]
+                items: []
             });
 
             myTab.addEventListener(myTab.EVENT_TAB_BLUR, function(e){
@@ -85,10 +34,34 @@
             myTab.addEventListener(myTab.EVENT_TAB_ACTIVE, function(e){
                 console.log('Active: ' + e.tab.title);
             });
+
+            myTab.addEventListener(myTab.EVENT_TAB_ADD, function(e){
+                console.log('Added: ' + e.tab.title);
+            });
+
+            myTab.addEventListener(myTab.EVENT_TAB_REMOVE, function(e){
+                console.log('Removed: ' + e.tab.title);
+            });
+        }
+
+        var addTab = function(){
+            var tabTitle = "tab" + Math.round(Math.random() * 100);
+            myTab.addTab({
+                id: tabTitle,
+                title: tabTitle,
+                content: "<h1>Hola! " + tabTitle + "</h1>",
+                active: true,
+                allowClose: true
+            });
         }
     </script>
 </head>
 <body>
-    <div id="mytab"></div>
+    <div>
+        <button onclick="addTab()">Add Tab</button>
+    </div>
+    <div class="container">
+        <div id="mytab"></div>
+    </div>
 </body>
 </html>

@@ -35,6 +35,11 @@ var STree = function(el, nodeData, options){
         scrollTop = window.pageYOffset || document.documentElement.scrollTop;
         return { top: rect.top + scrollTop, left: rect.left + scrollLeft }
     }
+
+    this.clear = function(){
+        this.container.innerHTML = "";
+        //TODO other clean up as necessary
+    }
     
     this.addEventListener = function(eventKey, listener){
         if(!this.eventListeners[eventKey])
@@ -52,32 +57,32 @@ var STree = function(el, nodeData, options){
     }
 
     this.onNodeExpanded = function(node){
-        var eventObj = {node: node};
+        var eventObj = {type:this.EVENT_FOLDER_EXPAND, node: node};
         this.sendEvent(this.EVENT_FOLDER_EXPAND, eventObj);
     }
 
     this.onNodeSelected = function(node){
-        var eventObj = {node: node};
+        var eventObj = {type:this.EVENT_ITEM_SELECT, node: node};
         this.sendEvent(this.EVENT_ITEM_SELECT, eventObj);
     }
 
     this.onNodeMoved = function(node, oldPath, newPath){
-        var eventObj = {node: node, oldPath:oldPath, newPath:newPath};
+        var eventObj = {type:this.EVENT_ITEM_MOVE, node: node, oldPath:oldPath, newPath:newPath};
         this.sendEvent(this.EVENT_ITEM_MOVE, eventObj);
     }
 
     this.onNodeAdd = function(node){
-        var eventObj = {node: node};
+        var eventObj = {type:this.EVENT_ITEM_ADD, node: node};
         this.sendEvent(this.EVENT_ITEM_ADD, eventObj);
     }
 
     this.onNodeRemove = function(node, oldParent){
-        var eventObj = {node: node, oldParent: oldParent};
+        var eventObj = {type:this.EVENT_ITEM_REMOVE, node: node, oldParent: oldParent};
         this.sendEvent(this.EVENT_ITEM_REMOVE, eventObj);
     }
 
     this.onNodeChange = function(node, oldValue, newValue){
-        var eventObj = {node: stree.editedNode, oldValue:oldValue, newValue:newValue};
+        var eventObj = {type:this.EVENT_ITEM_CHANGE, node: stree.editedNode, oldValue:oldValue, newValue:newValue};
         stree.sendEvent(this.EVENT_ITEM_CHANGE, eventObj);
     }
 
@@ -88,14 +93,16 @@ var STree = function(el, nodeData, options){
 
     this.expandNode = function(node){
         node.expanded = true;
-        node.listEl.classList.add('stree-list-expanded');
+        if(node.listEl)
+            node.listEl.classList.add('stree-list-expanded');
         node.expandEl.innerHTML = this.LIST_FOLDER_EXPANDED;
         node.expandEl.classList.add('expanded');
     }
 
     this.collapseNode = function(node){
         node.expanded = false;
-        node.listEl.classList.remove('stree-list-expanded');
+        if(node.listEl)
+            node.listEl.classList.remove('stree-list-expanded');
         node.expandEl.innerHTML = this.LIST_FOLDER_COLLAPSED;
         node.expandEl.classList.remove('expanded');
     }
@@ -121,7 +128,7 @@ var STree = function(el, nodeData, options){
     this.addNodeExpand = function(node, nodeElem, labelElem){
         var expandElem = document.createElement(this.LIST_LABEL_EXPAND_TAG);
         expandElem.classList.add('stree-item-expand');
-        if(node.children && node.children.length>0){
+        if(node.folder === true){
             expandElem.classList.add('stree-item-folder');
             expandElem.innerHTML = this.LIST_FOLDER_COLLAPSED;
             if(!node.onExpand)
@@ -229,44 +236,66 @@ var STree = function(el, nodeData, options){
         }
     }
 
+    this.expandNodePath = function(node){
+        if(node.children && node.children.length > 0)
+            this.expandNode(node);
+        if(node.parent)
+            this.expandNodePath(node.parent);
+    }
+
+    this.selectNode = function(node){
+        this._selectNode(node);
+        this.expandNodePath(node);
+    }
+
+    this.unselectNode = function(){
+        var currSelected = this.selectedNode;
+        if(currSelected){
+            currSelected.selected = false;
+            currSelected.el.classList.remove('selected');
+            currSelected.labelEl.classList.remove('stree-item-selected');
+            delete this.selectedNode;
+
+            if(this.selectHighlightEl.parentElement)
+                this.selectHighlightEl.parentElement.removeChild(this.selectHighlightEl);
+        }
+    }
+
+    this._selectNode = function(node, e){
+        if(this.isEditMode){
+            this.resetEditMode();
+            this.editedNode.labelTextEl.innerHTML = this.editedNode.label;
+            this.editedNode = null;
+        }
+
+        if(e && e.srcElement.classList.contains('stree-item-expand'))
+            return;
+        
+        if(e && node.folder === true && node.onExpand)
+            node.onExpand.call(this, e);
+        
+        if(this.selectedNode && this.selectedNode.id === node.id)
+            return; //dont select if it is already selected
+
+        
+        this.unselectNode();
+        
+        node.selected = true;
+        node.el.classList.add('selected');
+        node.labelEl.classList.add('stree-item-selected');
+
+        var scrollLeft = (this.container.scrollLeft>0)? (this.container.scrollLeft - 12) : 0;
+        this.selectHighlightEl.style.left = (((node.level+1)*(-8)) + scrollLeft) +'px'
+        this.selectHighlightEl.classList.add('selected');
+        node.el.appendChild(this.selectHighlightEl);
+
+        this.selectedNode = node;
+        this.onNodeSelected(node);
+    }
+
     this.getOnSelectListener = function(node, stree){
         return function(e){
-            if(stree.isEditMode){
-                stree.resetEditMode();
-                stree.editedNode.labelTextEl.innerHTML = stree.editedNode.label;
-                stree.editedNode = null;
-            }
-            
-            if(e.srcElement.classList.contains('stree-item-expand'))
-                return;
-            
-            if(node.children && node.children.length > 0 && node.onExpand)
-                node.onExpand.call(this, e);
-            
-            if(stree.selectedNode && stree.selectedNode.id === node.id)
-                return; //dont select if it is already selected
-
-            
-            var currSelected = stree.selectedNode;
-            if(currSelected){
-                currSelected.selected = false;
-                currSelected.el.classList.remove('selected');
-                currSelected.labelEl.classList.remove('stree-item-selected');
-            }
-            
-            node.selected = true;
-            node.el.classList.add('selected');
-            node.labelEl.classList.add('stree-item-selected');
-
-            if(stree.selectHighlightEl.parentElement)
-                stree.selectHighlightEl.parentElement.removeChild(stree.selectHighlightEl);
-            var scrollLeft = (stree.container.scrollLeft>0)? (stree.container.scrollLeft - 12) : 0;
-            stree.selectHighlightEl.style.left = (((node.level+1)*(-8)) + scrollLeft) +'px'
-            stree.selectHighlightEl.classList.add('selected');
-            node.el.appendChild(stree.selectHighlightEl);
-
-            stree.selectedNode = node;
-            stree.onNodeSelected.call(stree, node);
+            stree._selectNode.call(stree, node, e);
         }
     }
 
@@ -350,7 +379,7 @@ var STree = function(el, nodeData, options){
     }
 
     this.resetEditMode = function(){
-        this.nodeEditorEl.removeEventListener('change', stree.editedNode.changeListener);
+        this.nodeEditorEl.removeEventListener('change', this.editedNode.changeListener);
         delete this.editedNode.changeListener;
         this.editedNode.labelTextEl.removeChild(this.nodeEditorEl);
 
@@ -414,7 +443,7 @@ var STree = function(el, nodeData, options){
     this.addNodeIcon = function(node, labelElem){
         var iconElem = document.createElement(this.LIST_ICON_TAG);
         iconElem.classList.add('stree-item-icon');
-        if(node.children && node.children.length > 0)
+        if(node.folder === true)
             iconElem.innerHTML = Icon.get('FOLDER_ICON');
         else
             iconElem.innerHTML = Icon.get('FILE_ICON');
@@ -486,7 +515,7 @@ var STree = function(el, nodeData, options){
         
 
         if(node){
-            if(node.children && node.children.length > 0)
+            if(node.folder === true)
                 this.addFolderLine(node, nodeElem);
             
             this.addNodeLabel(node, nodeElem);
@@ -577,8 +606,8 @@ var STree = function(el, nodeData, options){
         }else{
             this.createChildNode(node, parentNode);
         }
-        if(node.children && node.children.length > 0){
-            node.isFolder = true;
+        if(node.folder === true || (node.children && node.children.length > 0)){
+            node.folder = true;
             if(!this.options.lazyLoad){
                 for(var childIdx=0;childIdx<node.children.length;childIdx++){
                     var childNode = node.children[childIdx];
@@ -596,7 +625,7 @@ var STree = function(el, nodeData, options){
             !e.srcElement.classList.contains('stree-item-label-text'))
                 return true; //if click is happening anywhere not a tree node, cancel context menu
 
-            var nodeElem;
+            var nodeElem = null;
             if(e.srcElement.tagName.toUpperCase() === 'DIV')
                 nodeElem = e.srcElement.parentElement;
             else if(e.srcElement.tagName.toUpperCase)
@@ -881,6 +910,104 @@ var SContext = function(menu, options){
 
 /*
 {
+    id: "myMenu",
+    items: [
+        {
+            label: "Menu 1",
+            onclick: onMenu1Func,
+            items: []
+        },
+        {
+            line: true,
+        },
+        {
+            label: "Menu 2",
+            onclick: onMenu1Func,
+            items: []
+        },
+        {
+            label: "Menu 3",
+            onclick: onMenu1Func,
+            items: []
+        }
+    ]
+}
+
+*/
+
+var SMenu = function(container, menu, options){
+    this.container = container;
+    this.menu = menu;
+
+    function isFunction(functionToCheck) {
+        return functionToCheck && {}.toString.call(functionToCheck) === '[object Function]';
+    }
+
+    this.onMenuclick = function(menu, menuItem, menuClickHandler){
+        return function(e){
+            var eventObj = {e: e, menu: menuItem}
+            menuClickHandler.call(menu, eventObj);
+        }
+    }
+
+    this.addMenuItem = function(item){
+        //<span class="menuitem">New</span>
+        var menuElem = document.createElement('span');
+        if(item.id)
+            menuElem.setAttribute('id', item.id);
+        menuElem.classList.add('menu-item');
+        if(item.label)
+            menuElem.innerHTML = item.label;
+        if(isFunction(item.onclick))
+            menuElem.addEventListener('click', this.onMenuclick(this, item, item.onclick));
+        
+        this.menuEl.appendChild(menuElem);
+    }
+
+    this.addLineItem = function(){
+        //<span class="menusep"></span>
+        var lineElem = document.createElement('span');
+        lineElem.innerHTML = '&nbsp;';
+        lineElem.classList.add('menu-sep');
+        this.menuEl.appendChild(lineElem);
+    }
+
+    this.addItem = function(item){
+        (item.line)? this.addLineItem() : this.addMenuItem(item);
+    }
+
+    this.createMenu = function(){
+        //<div id="[ID]" class="smenu"></div>
+        var menuElem = document.createElement('div');
+        menuElem.setAttribute('id', this.menu.id);
+        menuElem.classList.add('smenu');
+        this.menuEl = menuElem;
+
+        var items = this.menu.items;
+        if(items && items.length > 0){
+            for(var itemIdx=0;itemIdx<items.length;itemIdx++){
+                this.addItem(items[itemIdx]);
+            }
+        }else{
+            this.menu.items = [];
+        }
+        this.container.appendChild(menuElem);
+    }
+
+    this.initMenu = function(){
+        if(!this.menu || !this.menu.id){
+            console.log('Invalid menu structure');
+            return;
+        }
+        this.createMenu();
+    }
+    this.initMenu();
+}
+
+
+
+/*
+{
     id: "myTabs",
     items: [
         {
@@ -915,11 +1042,17 @@ var STabs = function(el, tabData, options){
     this.TAB_PANE_TAG = 'div';
     this.TAB_TITLE_TAG = 'span';
     this.TAB_CONTENT_TAG = 'div';
+    this.TAB_CLOSE_TAG = 'span';
 
     this.EVENT_TAB_ACTIVE = 'stabs-tab-active';
     this.EVENT_TAB_BLUR = 'stabs-tab-blur';
     this.EVENT_TAB_REMOVE = 'stabs-tab-remove';
     this.EVENT_TAB_ADD = 'stabs-tab-add';
+
+    this.getNewId = function(length) {
+        var idPrefix = this.container.id? this.container.id + '-' : '';
+        return idPrefix + 'stree-' + Math.round((Math.pow(36, length + 1) - Math.random() * Math.pow(36, length))).toString(36).slice(1);
+    }
     
     this.addEventListener = function(eventKey, listener){
         if(!this.eventListeners[eventKey])
@@ -937,33 +1070,114 @@ var STabs = function(el, tabData, options){
     }
 
     this.onTabBlur = function(tab){
-        var eventObj = {tab: tab};
+        var eventObj = {type:this.EVENT_TAB_BLUR, tab: tab};
         this.sendEvent(this.EVENT_TAB_BLUR, eventObj);
     }
 
     this.onTabActive = function(tab){
-        var eventObj = {tab: tab};
+        var eventObj = {type:this.EVENT_TAB_ACTIVE, tab: tab};
         this.sendEvent(this.EVENT_TAB_ACTIVE, eventObj);
+    }
+
+    this.onTabAdd = function(tab){
+        var eventObj = {type:this.EVENT_TAB_ADD, tab: tab};
+        this.sendEvent(this.EVENT_TAB_ADD, eventObj);
+    }
+
+    this.onTabRemove = function(tab){
+        var eventObj = {type:this.EVENT_TAB_REMOVE, tab: tab};
+        this.sendEvent(this.EVENT_TAB_REMOVE, eventObj);
+    }
+
+    this.hasTab = function(id){
+        return (this.getTab(id) != null)? true : false;
+    }
+
+    this.getTab = function(id){
+        var rVal = null;
+
+        for(var tIdx=0;tIdx<this.tabs.items.length;tIdx++){
+            var tObj = this.tabs.items[tIdx];
+            if(tObj.id === id){
+                rVal = tObj;
+                break;
+            }
+        }
+
+        return rVal;
+    }
+
+    this.resetActiveTab = function(){
+        if(!this.activeTab)
+            return;
+        this.activeTab.titleEl.classList.remove('active');
+        this.activeTab.contentEl.classList.remove('active');
+        this.onTabBlur(this.activeTab);
+    }
+
+    this.setActiveTab = function(tab){
+        if(this.activeTab){
+            this.resetActiveTab();
+        }
+        tab.titleEl.classList.add('active');
+        tab.contentEl.classList.add('active');
+        this.activeTab = tab;
+        this.onTabActive(tab);
     }
 
     this.getOnTabSelectListener = function(tab, stabs){
         return function(e){
-            if(stabs.activeTab){
-                stabs.activeTab.titleEl.classList.remove('active');
-                stabs.activeTab.contentEl.classList.remove('active');
-                stabs.onTabBlur.call(stabs, stabs.activeTab);
-            }
-            tab.titleEl.classList.add('active');
-            tab.contentEl.classList.add('active');
-            stabs.activeTab = tab;
-            stabs.onTabActive.call(stabs, tab);
+            if(e.srcElement.classList.contains('stabs-close')) //Dont raise tab select event if tab close is clicked
+                return;
+
+            stabs.setActiveTab.call(stabs, tab);
         }
+    }
+
+    this.removeAllTabs = function(){
+        while(this.tabs.items.length > 0){
+            this.removeTab(this.tabs.items[this.tabs.items.length-1]);
+        }
+    }
+
+    this.removeTab = function(tab){
+        if(this.activeTab.id === tab.id){
+            this.resetActiveTab();
+        }
+
+        this.headerEl.removeChild(tab.titleEl);
+        this.tabPaneEl.removeChild(tab.contentEl);
+        for(var tIdx=0;tIdx<this.tabs.items.length;tIdx++){
+            var tObj = this.tabs.items[tIdx];
+            if(tObj.id === tab.id){
+                this.tabs.items.splice(tIdx, 1);
+                var activIdx = (tIdx >= this.tabs.items.length)? this.tabs.items.length-1 : tIdx;
+                if(activIdx >= 0)
+                    this.setActiveTab(this.tabs.items[activIdx]);
+                break;
+            }
+        }
+        this.onTabRemove(tab);
+    }
+
+    this.getOnTabCloseListener = function(tab, stabs){
+        return function(e){
+            stabs.removeTab.call(stabs, tab);
+        }
+    }
+
+    this.createTabClose = function(tab){
+        var closeElem = document.createElement(this.TAB_CLOSE_TAG);
+        closeElem.classList.add('stabs-close');
+        closeElem.innerHTML = "x";
+        closeElem.addEventListener('click', this.getOnTabCloseListener(tab, this));
+        tab.titleEl.appendChild(closeElem);
     }
 
     this.createTabTitle = function(tab){
         var titleElem = document.createElement(this.TAB_TITLE_TAG);
         titleElem.classList.add('stabs-title');
-        if(tab.default)
+        if(tab.default || tab.active)
             titleElem.classList.add('active');
         if(tab.title){
             titleElem.setAttribute('title', tab.title);
@@ -971,13 +1185,17 @@ var STabs = function(el, tabData, options){
         }
         titleElem.addEventListener('click', this.getOnTabSelectListener(tab, this));
         tab.titleEl = titleElem;
+
+        if(tab.allowClose)
+            this.createTabClose(tab);
+        
         this.headerEl.appendChild(titleElem);
     }
 
     this.createTabContent = function(tab){
         var contentElem = document.createElement(this.TAB_CONTENT_TAG);
         contentElem.classList.add('stabs-content');
-        if(tab.default)
+        if(tab.default || tab.active)
             contentElem.classList.add('active');
         if(tab.content)
             contentElem.innerHTML = tab.content;
@@ -986,10 +1204,22 @@ var STabs = function(el, tabData, options){
     }
 
     this.createTabItem = function(tab){
+        if(!tab.id)
+            tab.id = this.getNewId(5);
         this.createTabTitle(tab);
         this.createTabContent(tab);
-        if(tab.default)
+        if(tab.default || tab.active)
             this.activeTab = tab;
+    }
+
+    this.addTab = function(tab){
+        if(!this.initTabs())
+            return false;
+        this.tabs.items.push(tab);
+        if(this.activeTab)
+            this.resetActiveTab();
+        this.createTabItem(tab);
+        this.onTabAdd(tab);
     }
 
     this.createTabPane = function(){
@@ -1011,18 +1241,34 @@ var STabs = function(el, tabData, options){
         this.container.appendChild(tabHeaderElem);
     }
 
+    this.initTabs = function(){
+        if(!this.tabs)
+            return false;
+
+        if(!this.tabs.items)
+            this.tabs.items = [];
+        
+        if(!this.headerEl || !this.tabPaneEl){
+            this.container.innerHTML = "";
+            this.createTabHeader();
+            this.createTabPane();
+        }
+        return true;
+    }
+
     this.createTabs = function(){
         this.container.classList.add('stabs');
-        this.createTabHeader();
-        this.createTabPane();
-        for(var tIdx=0;tIdx<this.tabs.items.length;tIdx++){
-            this.createTabItem(this.tabs.items[tIdx]);
+        if(this.tabs && this.tabs.items && this.tabs.items.length > 0){ //process only if there are tabs
+            this.createTabHeader();
+            this.createTabPane();
+            for(var tIdx=0;tIdx<this.tabs.items.length;tIdx++){
+                this.createTabItem(this.tabs.items[tIdx]);
+            }
         }
     }
 
     this.createTabs();
 }
-
 
 var Icon = {
     get: function(iconId){

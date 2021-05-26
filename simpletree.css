@@ -16,6 +16,8 @@
     --stree-contextmenu-item-line: #aaaaaa;
     --stree-contextmenu-highlight: #fafafa;
 
+    --smenu-text-light: #303030;
+
     --stabs-tab-title-bg: #E7EAED;
     --stabs-tab-title-border: #afafaf;
     --stabs-tab-title-active-bg: #FBFCFC;
@@ -23,6 +25,12 @@
     --stabs-tab-content-border: #DADCE0;
     --stabs-tab-title-scrollbar: rgba(154,154,154,0.8) transparent;
     --stabs-tab-title-scrollbar-bg: rgba(154,154,154,0.8);
+    --stabs-tab-title-scrollbar-track-bg: #eeeeee;
+    --stabs-tab-close: #666666;
+    --stabs-tab-close-bg: #dddddd;
+    --stabs-tab-close-hover: #303030;
+    --stabs-tab-close-hover-bg: #aaaaaa;
+
 }
 
 .stree{
@@ -237,6 +245,35 @@
 }
 
 
+/* Menu */
+.smenu{
+    display: inline;
+    font-family: Arial, Helvetica, sans-serif;
+}
+.smenu .menu-item {
+    font-size: 8pt;
+    color: var(--smenu-text-light);
+    padding: 2px;
+    margin-right: 6px;
+    cursor: pointer;
+}
+
+.smenu .menu-item:hover{
+    border-bottom: 1px dashed var(--smenu-text-light);
+}
+
+.smenu .menu-sep {
+    display: inline-block;
+    vertical-align: middle;
+    width: 2px;
+    height: 60%;
+    border-right-width: 2px;
+    border-right-style: dotted;
+    border-right-color: var(--smenu-text-light);
+    margin-right: 10px;
+}
+
+
 /* Tabs */
 .stabs {
     display: flex !important;
@@ -260,7 +297,7 @@
 }
 
 .stabs .stabs-header::-webkit-scrollbar-track {
-    background: transparent;
+    background: var(--stabs-tab-title-scrollbar-track-bg);
 }
 
 .stabs .stabs-header::-webkit-scrollbar-thumb {
@@ -272,6 +309,12 @@
 
 .stabs .stabs-header:hover {
     overflow-x: auto;
+}
+
+@-moz-document url-prefix() {
+    .stabs .stabs-header:hover {
+        flex: 0 1 28px;
+    }
 }
 
 .stabs .stabs-title-bar {
@@ -286,6 +329,7 @@
 
 .stabs .stabs-title {
     display: table-cell;
+    position:relative;
     min-width: 60px;
     max-width: 100px;
     background-color: var(--stabs-tab-title-bg);
@@ -312,6 +356,29 @@
     border-bottom: none;
 }
 
+.stabs .stabs-close {
+    position: absolute;
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    line-height: 12px;
+    font-size: 7pt;
+    padding: 0;
+    margin: 0;
+    right: 6px;
+    top: 3px;
+    text-align: center;
+    border-radius: 50%;
+    background: var(--stabs-tab-close-bg);
+    color: var(--stabs-tab-close);
+    cursor: pointer;
+}
+
+.stabs .stabs-close:hover {
+    background: var(--stabs-tab-close-hover-bg);
+    color: var(--stabs-tab-close-hover);
+}
+
 .stabs .stabs-pane {
     flex: 1 1 auto;
     padding: 5px;
@@ -319,7 +386,6 @@
     border-width: 1px;
     border-style: solid;
     border-color: var(--stabs-tab-content-border);
-    border-top: none;
 }
 
 .stabs .stabs-content {
