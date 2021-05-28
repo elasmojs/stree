@@ -142,6 +142,19 @@ var STree = function(el, nodeData, options){
         labelElem.appendChild(expandElem)
     }
 
+    this.nodeExists = function(node, parentNode){
+        if(!parentNode || !parentNode.folder || !parentNode.isRoot && !parentNode.children)
+            return false;
+        var children = parentNode.children;
+        var exists = false;
+        for(var cIdx=0;cIdx<children.length;cIdx++){
+            exists = (node.label === children[cIdx].label)? true : false;
+            if(exists)
+                break;
+        }
+        return exists;
+    }
+
     this.removeNode = function(node, childNode){
         var rVal = false;
         if(node.children && node.children.length >0){
