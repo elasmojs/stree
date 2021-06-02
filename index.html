@@ -53,7 +53,22 @@
                         label: "child1",
                         allowDrop: true,
                         folder: true,
-                        children: []
+                        children: [{
+                            label: "child2",
+                            allowDrop: true,
+                            folder: true,
+                            children: []
+                        },{
+                            label: "child3",
+                            allowDrop: true,
+                            folder: true,
+                            children: []
+                        },{
+                            label: "child4",
+                            allowDrop: true,
+                            folder: true,
+                            children: []
+                        }]
                     },{
                         label: "child2",
                         allowDrop: true,
@@ -132,6 +147,14 @@
 
             stree.addEventListener(stree.EVENT_ITEM_CHANGE, function(e){
                 console.log('Changed: ' + e.node.label + ' from ' + e.oldValue + ' to ' + e.newValue);
+            });
+
+            stree.addEventListener(stree.EVENT_ITEM_DRAGOVER, function(e){
+                console.log(e.node.label + ' - ' + e.draggedNode.label);
+                if(e.node.label === e.draggedNode.label){
+                    return false;
+                }
+                return true;
             });
         }
     </script>

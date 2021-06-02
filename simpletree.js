@@ -28,6 +28,7 @@ var STree = function(el, nodeData, options){
     this.EVENT_ITEM_REMOVE = 'stree-item-remove';
     this.EVENT_ITEM_CHANGE = 'stree-item-change';
     this.EVENT_FOLDER_EXPAND = 'stree-folder-expand';
+    this.EVENT_ITEM_DRAGOVER = 'stree-item-dragover';
 
     function offset(el) {
         var rect = el.getBoundingClientRect(),
@@ -84,6 +85,12 @@ var STree = function(el, nodeData, options){
     this.onNodeChange = function(node, oldValue, newValue){
         var eventObj = {type:this.EVENT_ITEM_CHANGE, node: stree.editedNode, oldValue:oldValue, newValue:newValue};
         stree.sendEvent(this.EVENT_ITEM_CHANGE, eventObj);
+    }
+
+    this.onDragOver = function(node, draggedNode){
+        var eventObj = {type:this.EVENT_ITEM_DRAGOVER, node: node, draggedNode: draggedNode};
+        var listeners = this.eventListeners[this.EVENT_ITEM_DRAGOVER];
+        return listeners[0].call(this, eventObj);
     }
 
     this.getNewId = function(length) {
@@ -348,14 +355,13 @@ var STree = function(el, nodeData, options){
 
     this.getOnDragListener = function(node, stree){
         return function(e){
-            console.log('Dragged: ' + node.label);
             stree.draggedNode = node;
         }
     }
 
     this.getOnDragOverListener = function(node, stree){
         return function(e){
-            if(node.allowDrop && node.id != stree.draggedNode.id){
+            if(node.allowDrop && node.id != stree.draggedNode.id && stree.onDragOver(node, stree.draggedNode)){
                 if(node.children && node.children.length > 0 && !node.expanded)
                     stree.expandNode(node);
                 e.preventDefault();
@@ -366,7 +372,6 @@ var STree = function(el, nodeData, options){
 
     this.getOnDropListener = function(node, stree){
         return function(e){
-            console.log('Dropped on: ' + node.label);
             if(stree.draggedNode.parent.id != node.id && stree.draggedNode.id != node.id) //ignore if dropped on its parent or itself
                 stree.moveNodeTo(stree.draggedNode, node);
             stree.draggedNode = null;
